@@ -1,0 +1,5 @@
+version: "3"
+
+tasks:
+  jhub:up:
+    cmd: uv run --with jupyter jupyter lab

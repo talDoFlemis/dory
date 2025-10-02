@@ -1,10 +1,41 @@
-# Python-generated files
+# Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
+*.pyc
+*.pyd
+*.pyo
+*.egg-info/
+.pytest_cache/
 
-# Virtual environments
-.venv
+# Virtual environment
+venv/
+env/
+.env/
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Logs and databases
+*.log
+*.sqlite3
+db.sqlite3
+
+# Test and build artifacts
+dist/
+build/
+*.egg
+htmlcov/
+.coverage
+
+# Jupyter Notebook specific files
+.ipynb_checkpoints/
+
+# Miscellaneous
+*~
+.#*
