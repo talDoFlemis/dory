@@ -1,16 +1,19 @@
-from dory.scaler import Scaler
-import pandas as pd
 import numpy as np
+from sklearn.base import BaseEstimator, TransformerMixin
 
 
-class StandardScaler(Scaler):
+class StandardScaler(TransformerMixin, BaseEstimator):
     mean_: np.ndarray
     scale_: np.ndarray
 
-    def fit(self, X: pd.DataFrame, y: pd.Series | None = None):
-        self.mean_ = X.mean().to_numpy()
-        self.scale_ = X.std(ddof=0).to_numpy()
+    def __init__(self):
+        pass
 
-    def transform(self, X: pd.DataFrame) -> np.ndarray:
-        arr = (X.to_numpy() - self.mean_) / self.scale_
+    def fit(self, X: np.ndarray, y: np.ndarray | None = None):
+        self.mean_ = X.mean()
+        self.scale_ = X.std(ddof=0)
+        return self
+
+    def transform(self, X: np.ndarray) -> np.ndarray:
+        arr = (X - self.mean_) / self.scale_
         return arr

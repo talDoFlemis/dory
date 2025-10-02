@@ -1,21 +1,27 @@
-from dory.linear import LinearRegression
 import pandas as pd
 import numpy as np
+from sklearn.base import BaseEstimator, RegressorMixin
+from sklearn.utils.validation import validate_data, check_is_fitted
 
 
-class OrdinaryLeastSquares(LinearRegression):
-    def fit(self, X: pd.DataFrame, y: pd.Series):
-        x_n = X.to_numpy()
-        y_n = y.to_numpy()
-        X = np.c_[np.ones(x_n.shape[0]).T, x_n]
-        w = np.linalg.inv(X.T @ X) @ X.T @ y_n
-        self.parameters = pd.Series(w)
+class OrdinaryLeastSquares(RegressorMixin, BaseEstimator):
+    w_: np.ndarray
+    def __init__(self, *, fit_intercept: bool = True):
+        self.fit_intercept = fit_intercept
 
+    def fit(self, X, y):
+        X, y = validate_data(self, X, y)
 
-    def predict(self, X: pd.DataFrame) -> pd.Series:
-        x_n = X.to_numpy()
-        ndarray =  x_n @ self.parameters.to_numpy()
+        X = np.c_[np.ones(X.shape[0]).T, X]
+        self.w_ = np.linalg.inv(X.T @ X) @ X.T @ y
+
+        self.X_ = X
+        self.y_ = y
+        return self
+
+    def predict(self, X: np.ndarray) -> pd.Series:
+        check_is_fitted(self)
+        independent_term = self.w_[0]
+        ndarray = X @ self.w_[1:]
+        ndarray = ndarray + independent_term
         return pd.Series(ndarray)
-
-    def get_parameters(self) -> pd.Series:
-        return self.parameters
