@@ -1,9 +1,10 @@
 import logging
-from sklearn.base import RegressorMixin, BaseEstimator
+
 import numpy as np
 import pandas as pd
+from sklearn.base import BaseEstimator, RegressorMixin
+from sklearn.model_selection import train_test_split
 from sklearn.utils.validation import check_is_fitted
-from sklearn.model_selection import ShuffleSplit
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,7 @@ class GradientDescentRegressor(RegressorMixin, BaseEstimator):
         shuffle: bool = True,
         seed: int = 42069,
         initial_weights: np.ndarray | None = None,
-        validation_fraction: float = 0.1
+        validation_fraction: float = 0.1,
     ):
         self.epochs = epochs
         self.epsilon = epsilon
@@ -47,32 +48,28 @@ class GradientDescentRegressor(RegressorMixin, BaseEstimator):
             }
         )
 
-        splitter = ShuffleSplit(test_size=self.validation_fraction, random_state=self.seed)
-
         for i in range(self.epochs):
             logger.debug(f"Starting epoch {i}")
 
-            train_idx, val_idx = next(splitter.split(X, y))
-            X_train, X_val = X[train_idx], X[val_idx]
-            y_train, y_val = y[train_idx], y[val_idx]
-            n = X_train.size
-
-            if self.shuffle:
-                indices = np.arange(X_train.shape[0])
-                np.random.shuffle(indices)
-                X_train = X_train[indices]
-                y_train = y_train[indices]
+            X_train, X_val, y_train, y_val = train_test_split(
+                X,
+                y,
+                test_size=self.validation_fraction,
+                random_state=self.seed,
+                shuffle=self.shuffle,
+            )
+            n = y.size
 
             y_pred = X_train @ self.weights_
             error = y_train - y_pred
             df_dw = 1 / n * (X_train.T @ error)
             df_dw = df_dw.reshape(len(df_dw), -1)
 
-            train_mse = np.sum((error ** 2), axis=0) / len(X_train)
+            train_loss = np.sum((error**2), axis=0) / n
 
             # Validation prediction and loss
             y_val_pred = X_val @ self.weights_
-            val_mse = np.sum(((y_val - y_val_pred) ** 2), axis=0) / len(X_val)
+            val_loss = np.sum(((y_val - y_val_pred) ** 2), axis=0) / n
 
             self.weights_ += self.alpha * df_dw
 
@@ -82,15 +79,18 @@ class GradientDescentRegressor(RegressorMixin, BaseEstimator):
                     pd.DataFrame(
                         {
                             "epoch": [i],
-                            "train_loss": [train_mse],
-                            "val_loss": [val_mse],
+                            "train_loss": [train_loss],
+                            "val_loss": [val_loss],
                         }
                     ),
                 ],
                 ignore_index=True,
             )
+            logger.info(
+                f"Epoch {i} completed. Train loss: {train_loss}, Val loss: {val_loss}, weights: {self.weights_.T}"
+            )
 
-            if sum(train_mse) < self.epsilon:
+            if sum(train_loss) < self.epsilon:
                 break
 
         return self

@@ -6,6 +6,7 @@ from sklearn.utils.validation import validate_data, check_is_fitted
 
 class OrdinaryLeastSquares(RegressorMixin, BaseEstimator):
     w_: np.ndarray
+
     def __init__(self, *, fit_intercept: bool = True):
         self.fit_intercept = fit_intercept
 
