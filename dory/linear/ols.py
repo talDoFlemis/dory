@@ -37,8 +37,8 @@ class OrdinaryLeastSquaresRegressor(RegressorMixin, BaseEstimator):
 
         return self
 
-    def predict(self, X: np.ndarray) -> pd.Series:
+    def predict(self, X: np.ndarray) -> np.ndarray:
         check_is_fitted(self)
         X = np.c_[np.ones(X.shape[0]).T, X]
         ndarray = X @ self.w_
-        return pd.Series(ndarray)
+        return ndarray
