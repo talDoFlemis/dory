@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 from sklearn.base import BaseEstimator, RegressorMixin
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import ShuffleSplit, train_test_split
 from sklearn.utils.validation import check_is_fitted, validate_data
 import pandas as pd
 
@@ -20,6 +20,7 @@ class StochasticGradientDescentRegressor(RegressorMixin, BaseEstimator):
         seed: int = 42069,
         initial_weights: np.ndarray | None = None,
         validation_fraction: float = 0.1,
+        batch_size: int = 10,
     ):
         self.epochs = epochs
         self.epsilon = epsilon
@@ -28,6 +29,7 @@ class StochasticGradientDescentRegressor(RegressorMixin, BaseEstimator):
         self.seed = seed
         self.initial_weights = initial_weights
         self.validation_fraction = validation_fraction
+        self.batch_size = batch_size
 
     def fit(self, X: np.ndarray, y: np.ndarray):
         X, y = validate_data(self, X, y)
@@ -50,35 +52,32 @@ class StochasticGradientDescentRegressor(RegressorMixin, BaseEstimator):
             }
         )
 
+        splitter = ShuffleSplit(
+            test_size=self.validation_fraction, random_state=self.seed
+        )
+
         for epoch in range(self.epochs):
             logger.debug(f"Starting epoch {epoch}")
             error = 0
             train_loss = 0
 
-            X_train, X_val, y_train, y_val = train_test_split(
-                X,
-                y,
-                test_size=self.validation_fraction,
-                random_state=self.seed,
-                shuffle=self.shuffle,
-            )
+            train_idx, val_idx = next(splitter.split(X, y))
+            X_train, X_val = X[train_idx], X[val_idx]
+            y_train, y_val = y[train_idx], y[val_idx]
 
-            for i in range(X_train.shape[0]):
-                logger.debug(f"Processing row {i}")
-                xi = X_train[i].reshape(1, -1)
-                yi = y_train[i]
+            indexes = np.arange(X_train.shape[0])
+            np.random.shuffle(indexes)
+            Xs = X_train[indexes][:self.batch_size, :]
+            ys = y_train[indexes][:self.batch_size, :]
 
-                prediction = xi @ self.weights_
-                error = yi - prediction
-                gradient = xi.T @ error
-                train_loss = error**2
+            prediction = Xs @ self.weights_
+            error = ys - prediction
 
-                self.weights_ += self.alpha * gradient
+            self.weights_ += self.alpha * Xs.T @ error
+            train_loss = np.mean(error ** 2)
 
-            train_loss = error**2
             y_val_pred = X_val @ self.weights_
-            val_loss = np.sum((y_val - y_val_pred) ** 2) / y_val.size
-
+            val_loss = np.mean((y_val - y_val_pred) ** 2)
             self.history_ = pd.concat(
                 [
                     self.history_,
@@ -93,11 +92,27 @@ class StochasticGradientDescentRegressor(RegressorMixin, BaseEstimator):
                 ignore_index=True,
             )
 
+
+
+            # for i in np.random.permutation(y_train.shape[0]):
+            #     logger.debug(f"Processing row {i}")
+            #     xi = X_train[i].reshape(1, -1)
+            #     yi = y_train[i]
+
+            #     prediction = xi @ self.weights_
+            #     error = yi - prediction
+            #     gradient = xi.T @ error
+            #     train_loss = np.mean(error**2)
+
+            #     self.weights_ += self.alpha * gradient
+
+
             logger.info(
                 f"Epoch {epoch} completed. Train loss: {train_loss}, Val loss: {val_loss}, weights: {self.weights_.T}"
             )
 
             if train_loss < self.epsilon:
+                logger.info("Loss less than epsilon, stopping")
                 break
 
         return self
