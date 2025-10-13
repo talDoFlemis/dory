@@ -3,7 +3,8 @@ import logging
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, RegressorMixin
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import ShuffleSplit, train_test_split
+from sklearn.utils import shuffle
 from sklearn.utils.validation import check_is_fitted
 
 logger = logging.getLogger(__name__)
@@ -48,28 +49,33 @@ class GradientDescentRegressor(RegressorMixin, BaseEstimator):
             }
         )
 
+        splitter = ShuffleSplit(test_size=self.validation_fraction, random_state=self.seed)
+
+
         for i in range(self.epochs):
             logger.debug(f"Starting epoch {i}")
 
-            X_train, X_val, y_train, y_val = train_test_split(
-                X,
-                y,
-                test_size=self.validation_fraction,
-                random_state=self.seed,
-                shuffle=self.shuffle,
-            )
-            n = y.size
+            train_idx, val_idx = next(splitter.split(X, y))
+            X_train, X_val = X[train_idx], X[val_idx]
+            y_train, y_val = y[train_idx], y[val_idx]
+            n = y_train.size
+
+            if self.shuffle:
+                indices = np.arange(X_train.shape[0])
+                np.random.shuffle(indices)
+                X_train = X_train[indices]
+                y_train = y_train[indices]
 
             y_pred = X_train @ self.weights_
             error = y_train - y_pred
             df_dw = 1 / n * (X_train.T @ error)
             df_dw = df_dw.reshape(len(df_dw), -1)
 
-            train_loss = np.sum((error**2), axis=0) / n
+            train_loss = np.mean(error**2)
 
             # Validation prediction and loss
             y_val_pred = X_val @ self.weights_
-            val_loss = np.sum(((y_val - y_val_pred) ** 2), axis=0) / n
+            val_loss = np.mean((y_val - y_val_pred) ** 2)
 
             self.weights_ += self.alpha * df_dw
 
@@ -90,7 +96,7 @@ class GradientDescentRegressor(RegressorMixin, BaseEstimator):
                 f"Epoch {i} completed. Train loss: {train_loss}, Val loss: {val_loss}, weights: {self.weights_.T}"
             )
 
-            if sum(train_loss) < self.epsilon:
+            if train_loss < self.epsilon:
                 break
 
         return self
