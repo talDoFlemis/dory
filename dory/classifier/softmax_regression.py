@@ -21,7 +21,10 @@ class SoftmaxRegressionClassifier(BaseEstimator, ClassifierMixin):
         self.weights_ = np.zeros((X.shape[1], self.num_classes_))
 
         n_samples = len(y)
-        y_one_hot = np.eye(self.num_classes_)[y]
+
+        self.class_to_index_ = {label: i for i, label in enumerate(self.classes_)}
+        y_indexed = np.array([self.class_to_index_[label] for label in y])
+        y_one_hot = np.eye(self.num_classes_)[y_indexed]
 
         for _ in range(self.epochs):
             scores = X @ self.weights_
@@ -35,6 +38,6 @@ class SoftmaxRegressionClassifier(BaseEstimator, ClassifierMixin):
         X = np.c_[np.ones(X.shape[0]).T, X]
         scores = X @ self.weights_
         y_predicted = self.__softmax(scores)
-        return np.argmax(y_predicted, axis=1)
+        return self.classes_[np.argmax(y_predicted, axis=1)]
 
     
