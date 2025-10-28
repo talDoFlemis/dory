@@ -15,21 +15,18 @@ class SoftmaxRegressionClassifier(BaseEstimator, ClassifierMixin):
         self.classes_ = np.unique(y)
         self.num_classes_ = len(self.classes_)
 
-        y = y.reshape(y.size, -1)
         y = y.astype(int)
 
-        # Add bias
         X = np.c_[np.ones(X.shape[0]).T, X]
         self.weights_ = np.zeros((X.shape[1], self.num_classes_))
 
         n_samples = len(y)
-        y_one_hot = np.zeros((n_samples, self.num_classes_))
-        y_one_hot[np.arange(n_samples), y] = 1
+        y_one_hot = np.eye(self.num_classes_)[y]
 
         for _ in range(self.epochs):
             scores = X @ self.weights_
             y_predicted = self.__softmax(scores)
-            gradients = X.T @ (y_predicted - y_one_hot) / y.size
+            gradients = X.T @ (y_predicted - y_one_hot) / n_samples
             self.weights_ -= self.learning_rate * gradients
 
         return self
