@@ -14,8 +14,10 @@ class KNNClassifier(ClassifierMixin, BaseEstimator):
 
     def fit(self, X: np.ndarray, y: np.ndarray):
         self.X_train_ = X
-        self.y_train_ = y
         self.classes_ = np.unique(y)
+        # Problem when mapping labels using bincount
+        self.label_to_idx_ = {label: idx for idx, label in enumerate(self.classes_)}
+        self.y_train_ = np.array([self.label_to_idx_[label] for label in y.ravel()])
 
         if self.metric == "mahalanobis":
             cov = np.cov(X.T)
@@ -71,12 +73,16 @@ class KNNClassifier(ClassifierMixin, BaseEstimator):
         a_square = np.sum(X**2, axis=1)[
             :, np.newaxis
         ]  # Shape (n_samples, 1) and force broadcast
+
         b_square = np.sum(self.X_train_**2, axis=1)  # Shape (n_train_samples,)
+
         distances = (
             -2 * X @ self.X_train_.T + a_square + b_square
         )  # Shape (n_samples, n_train_samples)
+
         distances[distances < 0] = 0
         distances = np.sqrt(distances)
+
         return np.argsort(distances, axis=1)[
             :, : self.n_neighbors
         ]  # Shape (n_samples, n_neighbors)
